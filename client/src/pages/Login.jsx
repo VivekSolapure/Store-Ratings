@@ -26,9 +26,10 @@ function Login() {
       console.log(token, user);
       
       // Redirect based on role
-      if (user.role === 'super admin') navigate('/admin');
+      if (user.role === 'super admin') navigate('/superadmin');
       else if (user.role === 'user') navigate('/user');
-      else if (user.role === 'admin') navigate('/store');
+      else if (user.role === 'admin') navigate('/admin');
+      else if (user.role === 'store_owner') navigate('/store');
       else setErrMsg('Invalid role');
     } catch (err) {
       setErrMsg(err.response?.data?.message || 'Login failed');

@@ -5,6 +5,7 @@ const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
 const storeRoutes = require('./routes/storeRoutes');
+const userRoutes = require('./routes/userRoutes');
 app.use(cors({
     origin: 'http://localhost:3000',
     credentials: true
@@ -17,6 +18,7 @@ app.get('/', (req, res) => res.send('API Running'));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ratings', ratingRoutes);
-app.use('/api', storeRoutes); // includes /store-owner/dashboard
+app.use('/api', storeRoutes); 
+app.use('/api/user', userRoutes);
 
 module.exports = app;

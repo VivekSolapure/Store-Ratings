@@ -63,6 +63,27 @@ const getUserDetails = (req, res) => {
   });
 };
 
+const getUsers = async (req, res) => {
+  try {
+    const [users] = await db.execute(`
+      SELECT u.*, 
+        CASE 
+          WHEN u.role = 'store_owner' THEN 
+            (SELECT ROUND(AVG(r.rating), 1) 
+             FROM ratings r 
+             JOIN stores s ON r.store_id = s.id 
+             WHERE s.owner_id = u.id)
+          ELSE NULL 
+        END as rating
+      FROM users u
+    `);
+    res.status(200).json({ users });
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 module.exports = {
   createUser: createUserByAdmin,
   createStore: createStoreByAdmin,
@@ -70,4 +91,5 @@ module.exports = {
   listUsers,
   listStores,
   getUserDetails,
+  getUsers,
 };

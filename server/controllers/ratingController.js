@@ -31,6 +31,8 @@ exports.updateRating = async (req, res) => {
   const { rating } = req.body;
   const { storeId } = req.params;
   const userId = req.user.id;
+  console.log(rating,storeId,userId);
+  
 
   try {
     const [existing] = await db.execute(
