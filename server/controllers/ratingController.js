@@ -1,4 +1,3 @@
-// controllers/ratingController.js
 const db = require('../config/db');
 
 exports.submitRating = async (req, res) => {

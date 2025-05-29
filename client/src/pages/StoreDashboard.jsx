@@ -1,6 +1,6 @@
 // src/pages/StoreDashboard.js
 import React, { useState, useEffect } from 'react';
-import { getStoreDetails } from '../services/api';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const StoreDashboard = () => {
@@ -25,9 +25,17 @@ const StoreDashboard = () => {
       setLoading(true);
       setError(null);
 
-      const response = await getStoreDetails();
-      setStoreData(response.data);
-      setRatings(response.data.ratings || []);
+      const [storeRes, ratingsRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/store-owner/details', {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get('http://localhost:5000/api/store-owner/ratings', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      setStoreData(storeRes.data.store);
+      setRatings(ratingsRes.data.ratings || []);
     } catch (err) {
       console.error('Error fetching store data:', err);
       setError(err.response?.data?.message || 'Error fetching store data');
@@ -65,10 +73,6 @@ const StoreDashboard = () => {
     );
   }
 
-  if (!storeData) {
-    return <div>No store data found</div>;
-  }
-
   const getRatingColor = (rating) => {
     if (rating >= 4) return '#4CAF50';
     if (rating >= 3) return '#FFC107';
@@ -76,64 +80,273 @@ const StoreDashboard = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Store Dashboard</h1>
-      
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-2xl font-semibold mb-4">Store Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-gray-600">Name</p>
-            <p className="font-medium">{storeData.name}</p>
+    <div className="store-dashboard">
+      <nav className="dashboard-nav">
+        <div className="nav-left">
+          <h2>{storeData?.name || 'Store Dashboard'}</h2>
+          <span className="store-address">{storeData?.email}</span>
+        </div>
+        <div className="nav-actions">
+          <button onClick={handleLogout} className="logout-btn">
+            Logout
+          </button>
+        </div>
+      </nav>
+
+      <div className="dashboard-content">
+        <div className="stats-container">
+          <div className="stat-card">
+            <div className="stat-header">
+              <h3>Average Rating</h3>
+              <span className="stat-icon">⭐</span>
+            </div>
+            <div className="stat-value" style={{ color: getRatingColor(storeData?.averageRating || 0) }}>
+              {storeData?.averageRating || 'N/A'}
+            </div>
+            <div className="stat-footer">
+              Based on {ratings.length} {ratings.length === 1 ? 'rating' : 'ratings'}
+            </div>
           </div>
-          <div>
-            <p className="text-gray-600">Address</p>
-            <p className="font-medium">{storeData.address}</p>
+
+          <div className="stat-card">
+            <div className="stat-header">
+              <h3>Total Reviews</h3>
+              <span className="stat-icon">📊</span>
+            </div>
+            <div className="stat-value">{ratings.length}</div>
+            <div className="stat-footer">
+              All time reviews
+            </div>
           </div>
-          <div>
-            <p className="text-gray-600">Average Rating</p>
-            <p className="font-medium">{storeData.averageRating || 'No ratings yet'}</p>
+        </div>
+
+        <div className="ratings-section">
+          <div className="section-header">
+            <h3>Recent Ratings & Reviews</h3>
+            <button onClick={fetchStoreData} className="refresh-btn">
+              ↻ Refresh
+            </button>
           </div>
-          <div>
-            <p className="text-gray-600">Total Ratings</p>
-            <p className="font-medium">{storeData.totalRatings || 0}</p>
+          
+          <div className="ratings-table-container">
+            <table className="ratings-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Rating</th>
+                  <th>Email</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ratings.map(rating => (
+                  <tr key={rating.id}>
+                    <td className="user-cell">{rating.userName}</td>
+                    <td>
+                      <span className="rating-badge" style={{ backgroundColor: getRatingColor(rating.rating) }}>
+                        {rating.rating} ★
+                      </span>
+                    </td>
+                    <td>{rating.userEmail}</td>
+                    <td>{new Date(rating.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}</td>
+                  </tr>
+                ))}
+                {ratings.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="no-data">
+                      <div className="no-data-content">
+                        <span className="no-data-icon">📝</span>
+                        <p>No ratings yet</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      {storeData.ratings && storeData.ratings.length > 0 ? (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-4">Recent Ratings</h2>
-          <div className="space-y-4">
-            {storeData.ratings.map((rating, index) => (
-              <div key={index} className="border-b pb-4 last:border-b-0 last:pb-0">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">{rating.userName}</p>
-                    <p className="text-gray-600 text-sm">{rating.userEmail}</p>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-yellow-400 mr-1">★</span>
-                    <span className="font-medium">{rating.rating}</span>
-                  </div>
-                </div>
-                {rating.comment && (
-                  <p className="text-gray-700 mt-2">{rating.comment}</p>
-                )}
-                <p className="text-gray-500 text-sm mt-2">
-                  {new Date(rating.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white shadow rounded-lg p-6">
-          <p className="text-gray-600 text-center">No ratings yet</p>
-        </div>
-      )}
-
       <style>{`
+        .store-dashboard {
+          min-height: 100vh;
+          background: #f8f9fa;
+          color: #333;
+        }
+
+        .dashboard-nav {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem 2rem;
+          background: white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .nav-left {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .nav-left h2 {
+          margin: 0;
+          color: #2c3e50;
+          font-size: 1.5rem;
+        }
+
+        .store-address {
+          color: #666;
+          font-size: 0.9rem;
+          margin-top: 0.25rem;
+        }
+
+        .logout-btn {
+          padding: 0.6rem 1.2rem;
+          background: #e74c3c;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+          background: #c0392b;
+          transform: translateY(-1px);
+        }
+
+        .dashboard-content {
+          max-width: 1200px;
+          margin: 2rem auto;
+          padding: 0 2rem;
+        }
+
+        .stats-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .stat-card {
+          background: white;
+          padding: 1.5rem;
+          border-radius: 10px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .stat-header h3 {
+          margin: 0;
+          color: #2c3e50;
+          font-size: 1.1rem;
+        }
+
+        .stat-icon {
+          font-size: 1.5rem;
+        }
+
+        .stat-value {
+          font-size: 2.5rem;
+          font-weight: bold;
+          margin: 1rem 0;
+        }
+
+        .stat-footer {
+          color: #666;
+          font-size: 0.9rem;
+        }
+
+        .ratings-section {
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          padding: 1.5rem;
+        }
+
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        .section-header h3 {
+          margin: 0;
+          color: #2c3e50;
+        }
+
+        .refresh-btn {
+          padding: 0.5rem 1rem;
+          border: 1px solid #ddd;
+          background: white;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+          background: #f8f9fa;
+          transform: rotate(180deg);
+        }
+
+        .ratings-table-container {
+          overflow-x: auto;
+        }
+
+        .ratings-table {
+          width: 100%;
+          border-collapse: collapse;
+          white-space: nowrap;
+        }
+
+        .ratings-table th {
+          background: #f8f9fa;
+          padding: 1rem;
+          text-align: left;
+          font-weight: 600;
+          color: #2c3e50;
+        }
+
+        .ratings-table td {
+          padding: 1rem;
+          border-bottom: 1px solid #eee;
+        }
+
+        .rating-badge {
+          padding: 0.3rem 0.6rem;
+          border-radius: 20px;
+          color: white;
+          font-weight: 500;
+        }
+
+        .no-data {
+          text-align: center;
+          padding: 3rem !important;
+        }
+
+        .no-data-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .no-data-icon {
+          font-size: 2rem;
+        }
+
         .loading-container {
           display: flex;
           flex-direction: column;
@@ -185,6 +398,20 @@ const StoreDashboard = () => {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+          .dashboard-nav {
+            padding: 1rem;
+          }
+
+          .dashboard-content {
+            padding: 1rem;
+          }
+
+          .stats-container {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>

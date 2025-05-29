@@ -1,9 +1,6 @@
-// models/ratingModel.js
 const db = require('../config/db');
 
-/**
- * Submit a new rating
- */
+
 const createRating = async (userId, storeId, rating, comment) => {
   const [result] = await db.query(
     'INSERT INTO ratings (user_id, store_id, rating, comment) VALUES (?, ?, ?, ?)',
@@ -12,9 +9,7 @@ const createRating = async (userId, storeId, rating, comment) => {
   return result.insertId;
 };
 
-/**
- * Update existing rating
- */
+
 const updateRating = async (ratingId, rating, comment) => {
   const [result] = await db.query(
     'UPDATE ratings SET rating = ?, comment = ? WHERE id = ?',
@@ -23,9 +18,7 @@ const updateRating = async (ratingId, rating, comment) => {
   return result.affectedRows > 0;
 };
 
-/**
- * Check if rating exists
- */
+
 const getRatingById = async (ratingId) => {
   const [rows] = await db.query(
     'SELECT * FROM ratings WHERE id = ?',
@@ -34,9 +27,7 @@ const getRatingById = async (ratingId) => {
   return rows[0];
 };
 
-/**
- * Get all ratings by a user
- */
+
 const getRatingsByUserId = async (userId) => {
   const [rows] = await db.query(
     'SELECT * FROM ratings WHERE user_id = ?',
@@ -45,9 +36,7 @@ const getRatingsByUserId = async (userId) => {
   return rows;
 };
 
-/**
- * Get all ratings for a store
- */
+
 const getRatingsByStoreId = async (storeId) => {
   const [rows] = await db.query(
     'SELECT * FROM ratings WHERE store_id = ?',
@@ -56,9 +45,7 @@ const getRatingsByStoreId = async (storeId) => {
   return rows;
 };
 
-/**
- * Get average rating for a store
- */
+
 const getAverageRatingByStore = (storeId) => {
   return db.execute(
     `SELECT ROUND(AVG(rating), 2) as avg FROM ratings WHERE store_id = ?`,

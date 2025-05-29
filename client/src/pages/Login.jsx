@@ -23,7 +23,6 @@ function Login() {
       // Save token & user to localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      console.log(token, user);
       
       // Redirect based on role
       if (user.role === 'super admin') navigate('/superadmin');
