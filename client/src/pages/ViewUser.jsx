@@ -8,7 +8,7 @@ const ViewUsers = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:5000/api/admin/users?search=${search}`, {
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/admin/users?search=${search}`, {
         headers: { Authorization: token }
       });
       setUsers(res.data.users);

@@ -11,7 +11,13 @@ const {
 router.use(authenticate, authorizeRoles('admin'));
 
 router.post('/add-user', createUser);
-router.post('/add-store', addStore, createStore);
+router.post('/add-store', async (req, res, next) => {
+  try {
+    await createStore(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
 router.get('/stats', getDashboardStats);
 router.get('/listusers', listUsers);
 router.get('/stores', listStores);

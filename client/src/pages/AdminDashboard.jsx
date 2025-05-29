@@ -3,8 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import UserList from './UserList';
 import StoreList from './StoreList';
-import AddUser from './AddUser';
-import AddStore from './AddStore';
+import AddUserOrStore from './AddUserOrStore';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -15,7 +14,7 @@ const AdminDashboard = () => {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/admin/stats', {
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/admin/stats`, {
         headers: { authorization: `Bearer ${token}` }
       });
       setStats(res.data);
@@ -92,15 +91,13 @@ const AdminDashboard = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <button className="close-btn" onClick={() => setShowUserModal(false)}>×</button>
-            <AddUser onSuccess={() => {
+            <AddUserOrStore onSuccess={() => {
               setShowUserModal(false);
               fetchStats();
             }} />
           </div>
         </div>
       )}
-
-
 
       <style>{`
         .admin-dashboard {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getAllStores, getUserRatings, rateStore } from '../services/api';
 
 const RatingStars = ({ rating, onRate }) => {
   const [hover, setHover] = useState(0);
@@ -43,67 +43,44 @@ const StoreList = ({ userView = false }) => {
   const [stores, setStores] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [userRatings, setUserRatings] = useState({});
   const [ratingInProgress, setRatingInProgress] = useState(null);
 
-  const fetchStores = async () => {
+  useEffect(() => {
+    fetchData();
+  }, [userView]);
+
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      // Fetch stores and user's ratings in parallel
       const [storesRes, ratingsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/stores'),
-        userView ? axios.get('http://localhost:5000/api/user/ratings', {
-          headers: { Authorization: `Bearer ${token}` }
-        }) : Promise.resolve({ data: { ratings: [] } })
+        getAllStores(),
+        userView ? getUserRatings() : Promise.resolve({ data: [] })
       ]);
 
-      // Create a map of store ratings
-      const ratingsMap = ratingsRes.data.ratings.reduce((acc, curr) => {
-        acc[curr.store_id] = curr.rating;
-        return acc;
-      }, {});
-
-      setStores(storesRes.data.stores);
-      setUserRatings(ratingsMap);
-      setError(null);
+      setStores(storesRes.data);
+      
+      if (userView) {
+        const ratingsMap = {};
+        ratingsRes.data.forEach(rating => {
+          ratingsMap[rating.store_id] = rating.rating;
+        });
+        setUserRatings(ratingsMap);
+      }
     } catch (err) {
-      setError('Failed to load stores and ratings');
-      console.error(err);
+      setError(err.response?.data?.message || 'Error fetching data');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchStores();
-  }, [userView]);
-
   const handleRating = async (storeId, rating) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`http://localhost:5000/api/stores/${storeId}/rate`, 
-        { rating },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // Update local state
-      setUserRatings(prev => ({
-        ...prev,
-        [storeId]: rating
-      }));
-
-      // Refresh stores to get updated average
-      fetchStores();
-
-      // Show success message
-      alert('Rating updated successfully!');
+      await rateStore(storeId, rating);
+      await fetchData(); // Refresh data
     } catch (err) {
-      alert(err.response?.data?.message || 'Error updating rating');
-    } finally {
-      setRatingInProgress(null);
+      setError(err.response?.data?.message || 'Error submitting rating');
     }
   };
 
@@ -116,173 +93,38 @@ const StoreList = ({ userView = false }) => {
   if (error) return <div className="error">{error}</div>;
 
   return (
-    <div className="store-list">
-      <div className="search-container">
-        <input
-          type="text"
-          placeholder="Search stores by name or address..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="search-input"
-        />
-      </div>
-
-      <div className="stores-grid">
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Stores</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredStores.map(store => (
-          <div key={store.id} className="store-card">
-            <h3>{store.name}</h3>
-            <p className="address">{store.address}</p>
-            <div className="rating-section">
-              <div className="average-rating">
-                <span>Average Rating:</span>
-                <div className="rating-display">
-                  {store.averageRating ? 
-                    `${store.averageRating} ★` : 
-                    'No ratings yet'}
-                </div>
-              </div>
-              <div className="user-rating">
-                <span>Your Rating:</span>
-                {ratingInProgress === store.id ? (
-                  <div className="rating-input">
-                    <RatingStars
-                      rating={userRatings[store.id] || 0}
-                      onRate={(rating) => handleRating(store.id, rating)}
-                    />
-                    <button 
-                      className="cancel-btn"
-                      onClick={() => setRatingInProgress(null)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className="rating-display">
-                    {userRatings[store.id] ? (
-                      <>
-                        <span>{userRatings[store.id]} ★</span>
-                        <button 
-                          className="edit-btn"
-                          onClick={() => setRatingInProgress(store.id)}
-                        >
-                          Edit
-                        </button>
-                      </>
-                    ) : (
-                      <button 
-                        className="rate-btn"
-                        onClick={() => setRatingInProgress(store.id)}
-                      >
-                        Rate Now
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+          <div key={store.id} className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-2">{store.name}</h2>
+            <p className="text-gray-600 mb-4">{store.address}</p>
+            <div className="flex items-center mb-4">
+              <span className="text-gray-700 mr-2">Average Rating:</span>
+              <span className="font-semibold">{store.averageRating || 'No ratings'}</span>
+              <span className="text-gray-500 ml-2">({store.totalRatings || 0} reviews)</span>
             </div>
+            {userView && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your Rating
+                </label>
+                <select
+                  value={userRatings[store.id] || ''}
+                  onChange={(e) => handleRating(store.id, e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                >
+                  <option value="">Select rating</option>
+                  {[1, 2, 3, 4, 5].map(num => (
+                    <option key={num} value={num}>{num} Star{num !== 1 ? 's' : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         ))}
       </div>
-
-      <style>{`
-        .store-list {
-          padding: 20px;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .search-container {
-          margin-bottom: 20px;
-        }
-
-        .search-input {
-          width: 100%;
-          padding: 12px;
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          font-size: 16px;
-        }
-
-        .stores-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 20px;
-        }
-
-        .store-card {
-          background: white;
-          border-radius: 8px;
-          padding: 20px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .store-card h3 {
-          margin: 0 0 10px 0;
-          color: #333;
-        }
-
-        .address {
-          color: #666;
-          margin-bottom: 15px;
-        }
-
-        .rating-section {
-          border-top: 1px solid #eee;
-          padding-top: 15px;
-        }
-
-        .average-rating,
-        .user-rating {
-          margin: 10px 0;
-        }
-
-        .rating-display {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-top: 5px;
-        }
-
-        .rate-btn,
-        .edit-btn {
-          padding: 6px 12px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 14px;
-        }
-
-        .rate-btn {
-          background: #28a745;
-          color: white;
-        }
-
-        .edit-btn {
-          background: #007bff;
-          color: white;
-        }
-
-        .cancel-btn {
-          padding: 6px 12px;
-          border: none;
-          border-radius: 4px;
-          background: #dc3545;
-          color: white;
-          cursor: pointer;
-          margin-left: 10px;
-        }
-
-        .loading,
-        .error {
-          text-align: center;
-          padding: 20px;
-          font-size: 18px;
-        }
-
-        .error {
-          color: #dc3545;
-        }
-      `}</style>
     </div>
   );
 };

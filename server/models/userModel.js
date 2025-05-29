@@ -1,10 +1,11 @@
 const db = require('../config/db');
 
-const createUser = async (user) => {
+const createUser = (user, callback) => {
   const { name, email, address, password, role } = user;
   const sql = `INSERT INTO users (name, email, address, password, role) VALUES (?, ?, ?, ?, ?)`;
-  const [result] = await db.execute(sql, [name, email, address, password, role]);
-  return result;
+  db.query(sql, [name, email, address, password, role], (err, result) => {
+    callback(err, result);  // Pass both error and result
+  });
 };
 
 const getUserByEmail = async (email) => {

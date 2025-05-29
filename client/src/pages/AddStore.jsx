@@ -11,7 +11,7 @@ const AddStore = ({ onSuccess }) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post('http://localhost:5000/api/admin/add-store', form, {
+      const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/admin/add-store`, form, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage(res.data.message);

@@ -9,20 +9,43 @@ const createUserByAdmin = (req, res) => {
   bcrypt.hash(password, 10, (err, hash) => {
     if (err) return res.status(500).json({ message: 'Hash error' });
 
-    createUser({ name, email, address, password: hash, role }, (err) => {
+    createUser({ name, email, address, password: hash, role }, (err, result) => {
       if (err) return res.status(500).json({ message: 'Error creating user' });
-      res.status(201).json({ message: 'User added successfully' });
+      res.status(201).json({ 
+        message: 'User added successfully',
+        userId: result.insertId
+      });
     });
   });
 };
 
-const createStoreByAdmin = (req, res) => {
-  const { name, email, address, owner_id } = req.body;
+const createStoreByAdmin = async (req, res) => {
+  try {
+    const { name, email, address, owner_id } = req.body;
+    console.log('Received store data:', { name, email, address, owner_id });
 
-  createStore({ name, email, address, owner_id }, (err) => {
-    if (err) return res.status(500).json({ message: 'Error creating store' });
+    if (!name || !email || !address || !owner_id) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // First check if user exists
+    const [users] = await db.execute('SELECT id FROM users WHERE id = ?', [owner_id]);
+    
+    if (users.length === 0) {
+      return res.status(404).json({ message: `User with ID ${owner_id} not found` });
+    }
+
+    // Create store using promise
+    await db.execute(
+      'INSERT INTO stores (name, email, address, owner_id) VALUES (?, ?, ?, ?)',
+      [name, email, address, owner_id]
+    );
+
     res.status(201).json({ message: 'Store added successfully' });
-  });
+  } catch (err) {
+    console.error('Store creation error:', err);
+    res.status(500).json({ message: 'Error creating store' });
+  }
 };
 
 

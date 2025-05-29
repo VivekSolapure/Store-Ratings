@@ -18,7 +18,7 @@ const ChangePassword = ({ onSuccess }) => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/user/change-password', 
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/user/change-password`, 
         { currentPassword: form.currentPassword, newPassword: form.newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );

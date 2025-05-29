@@ -2,9 +2,16 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { validateForm } from '../utils/validations';
 
-const AddUser = ({ onSuccess }) => {
+const AddUserOrStore = ({ onSuccess }) => {
   const [form, setForm] = useState({
-    name: '', email: '', password: '', address: '', role: 'user'
+    name: '', 
+    email: '', 
+    password: '', 
+    address: '', 
+    role: 'user',  // This should match exactly with what your backend expects
+    storeName: '', 
+    storeEmail: '', 
+    storeAddress: ''
   });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
@@ -47,19 +54,47 @@ const AddUser = ({ onSuccess }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post('http://localhost:5000/api/admin/add-user', form, {
+      console.log("Token:", token); // Check if token exists
+      
+      // 1. Add user
+      console.log("Attempting to create user...");
+      const userRes = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/admin/add-user`, form, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      console.log(res);
+      console.log("User created successfully:", userRes.data);
       
+      if (form.role === 'store_owner') {
+        console.log("Preparing store data...");
+        const storeData = {
+          name: form.storeName,
+          email: form.storeEmail,
+          address: form.storeAddress,
+          owner_id: userRes.data.userId
+        };
+        console.log("Store data prepared:", storeData);
+
+        console.log("Attempting to create store...");
+        const storeRes = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/admin/add-store`, storeData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('Store created successfully:', storeRes.data);
+      }
+
       setMessage(`${form.role.charAt(0).toUpperCase() + form.role.slice(1).replace('_', ' ')} Successfully added`);
       setAddedUser({ name: form.name, email: form.email, role: form.role });
-      setForm({ name: '', email: '', password: '', address: '', role: 'user' });
+      setForm({ name: '', email: '', password: '', address: '', role: 'user', storeName: '', storeEmail: '', storeAddress: '' });
       if (onSuccess) onSuccess();
     } catch (err) {
+      // More detailed error logging
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      });
       setIsSuccess(false);
       setAddedUser(null);
-      setMessage(err.response?.data?.message || 'Error adding user');
+      setMessage(err.response?.data?.message || 'Error adding user/store');
     }
   };
 
@@ -136,6 +171,46 @@ const AddUser = ({ onSuccess }) => {
             <option value="store_owner">Store Owner</option>
           </select>
         </div>
+        {form.role === 'store_owner' && (
+          <>
+            <div className="form-group">
+              <input
+                name="storeName"
+                placeholder="Store Name"
+                value={form.storeName}
+                onChange={handleChange}
+                className={errors.storeName ? 'error' : ''}
+                required
+                maxLength={60}
+              />
+              {errors.storeName && <span className="error-message">{errors.storeName}</span>}
+            </div>
+            <div className="form-group">
+              <input
+                name="storeEmail"
+                type="email"
+                placeholder="Store Email"
+                value={form.storeEmail}
+                onChange={handleChange}
+                className={errors.storeEmail ? 'error' : ''}
+                required
+              />
+              {errors.storeEmail && <span className="error-message">{errors.storeEmail}</span>}
+            </div>
+            <div className="form-group">
+              <input
+                name="storeAddress"
+                placeholder="Store Address"
+                value={form.storeAddress}
+                onChange={handleChange}
+                className={errors.storeAddress ? 'error' : ''}
+                required
+                maxLength={400}
+              />
+              {errors.storeAddress && <span className="error-message">{errors.storeAddress}</span>}
+            </div>
+          </>
+        )}
         <button
           type="submit"
           disabled={isSuccess}
@@ -154,7 +229,6 @@ const AddUser = ({ onSuccess }) => {
         >
           {isSuccess ? 'User added' : 'Add User'}
         </button>
-
       </form>
       <style>{`
         .form-container {
@@ -221,4 +295,4 @@ const AddUser = ({ onSuccess }) => {
   );
 };
 
-export default AddUser;
+export default AddUserOrStore;
